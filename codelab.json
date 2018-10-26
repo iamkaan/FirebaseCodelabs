@@ -1,0 +1,24 @@
+{
+  "environment": "web",
+  "source": "FirestoreWorkshop/FirestoreDeepDive.md",
+  "format": "html",
+  "prefix": "../../",
+  "mainga": "UA-49880327-14",
+  "updated": "2018-10-26T14:15:02+01:00",
+  "id": "firebase-cloud-firestore-dragon",
+  "duration": 40,
+  "title": "Firebase Cloud Firestore: Deep Dive",
+  "author": "Kaan Mamikoglu",
+  "summary": "Firebase offers two cloud-based, client-accessible database solutions that support realtime data syncing. In this workshop, we’ll focus on Could Firestore, Firebase’s new database solution. Cloud Firestore is an efficient, low-latency database solution for mobile apps that is optimized for speed, security, and offline use. As part of this workshop, we’ll build an app using Cloud Firestore focusing on realtime updates, expressive querying, and offline support. The workshop participants will learn how to read and write data to Firestore from an Android app, listen to changes in Firestore data in realtime, use Firebase Authentication and security rules to secure Firestore data, and write complex Firestore queries.",
+  "theme": "",
+  "status": [
+    "draft"
+  ],
+  "category": [
+    "firebase"
+  ],
+  "tags": [
+    "kotlin"
+  ],
+  "url": "firebase-cloud-firestore-dragon"
+}

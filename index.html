@@ -1,0 +1,309 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Firebase Cloud Firestore: Deep Dive</title>
+  <script src="bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="elements/codelab.html">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <style is="custom-style">
+    body {
+      font-family: "Roboto",sans-serif;
+      background: var(--google-codelab-background, #F8F9FA);
+    }
+  </style>
+  
+</head>
+<body unresolved class="fullbleed">
+
+  <google-codelab title="Firebase Cloud Firestore: Deep Dive"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="Overview" duration="1">
+        <h2>Content</h2>
+<p>In this workshop we&#39;re going to create an Android app for bragging where Dragon owners can show off their magical fire-breathing creatures. We&#39;re going to use Cloud Firestore and learn how to</p>
+<ul>
+<li>Read and write data to Firestore from an Android app</li>
+<li>Listen to changes in Firestore data in realtime</li>
+<li>Write complex Firestore queries</li>
+<li>Perform batched operations</li>
+</ul>
+<h2>Prerequisites</h2>
+<p>Before you start, make sure you:</p>
+<ol type="1">
+<li>Installed the latest version of Android Studio: <a href="https://developer.android.com/studio/" target="_blank">https://developer.android.com/studio/</a></li>
+<li>Have an Android device or an emulator with Play Services installed</li>
+<li>Are able to run an Android project from Android Studio on the device/emulator you have</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Firebase setup" duration="6">
+        <p>First of all, go to Firebase Console at <a href="https://console.firebase.google.com" target="_blank">https://console.firebase.google.com</a> and create a new Project.?</p>
+<p><img style="max-width: 400.00px" src="img/455e665320c299dd.png"></p>
+<p>Create an Android app on the Firebase Console.</p>
+<ul>
+<li>Enter <code>com.iamkaan.dragon</code> for the package name.</li>
+<li>Give a name to the app. This is useful for you to recognize the app at a glance in case you will have multiple apps in a single Firebase project.</li>
+<li>Use the following command in your terminal/command line to get the debug signing certificate SHA-1</li>
+</ul>
+<pre><code>keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+</code></pre>
+<pre><code>// for Windows
+keytool -list -v -keystore &#34;%USERPROFILE%\.android\debug.keystore&#34; -alias androiddebugkey -storepass android -keypass android
+</code></pre>
+<p>Check these StackOverflow threads if you have issues getting the SHA-1</p>
+<ul>
+<li><a href="https://stackoverflow.com/questions/15727912/sha-1-fingerprint-of-keystore-certificate" target="_blank">SHA-1 fingerprint of keystore certificate</a></li>
+<li><a href="https://stackoverflow.com/questions/4830253/where-is-the-keytool-application" target="_blank">Where is the Keytool application?</a></li>
+</ul>
+<p><img style="max-width: 400.00px" src="img/827e71624afb40e5.png"></p>
+<p>Then, on the next page, download the <code>google-services.json</code>. We&#39;re going to use it later.</p>
+<p>Go to the Database page and enable Cloud Firestore with the test mode security option.<br>Go to the Storage page and enable Cloud Storage with the test mode security option.<br>Go to the Authentication page, switch to the Sign-in method tab and enable Google sign-in and save.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Clone the repository" duration="5">
+        <p>We&#39;re going to start with a project that is partially set up so that we can focus on adding new features using Cloud Firestore and don&#39;t spend time on the usual Android development.</p>
+<p>Clone the project from <a href="https://github.com/iamkaan/dragon" target="_blank">https://github.com/iamkaan/dragon</a></p>
+<pre><code>git clone https://github.com/iamkaan/dragon.git
+</code></pre>
+<p>Open the project in Android Studio and run it.</p>
+<p>Before you sign in, there&#39;s one thing to do. We need to replace the Google Sign-In request ID token. First, go to <a href="https://console.developers.google.com/apis/credentials" target="_blank">Google Developer Console&#39;s credentials page</a> and copy the value for <code>Web client (auto created by Google Service)</code>. Now open the <code>UserManager</code> class in the project and replace the value of <code>token</code> with the value you copied from the console.</p>
+<pre><code>const val token = &#34;your token&#34;
+</code></pre>
+<p>With this, you should be able to sign into app. Next, let&#39;s add the <code>google-services.json</code> into the project. Copy the file you downloaded earlier and replace it with the one that is under the <code>app</code> directory.</p>
+<p><img style="max-width: 200.00px" src="img/7887310d2fc873b1.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Remove the mock data code" duration="1">
+        <p>In order to have something to display initially, we&#39;ve added some mock data to our database when we first launched the app. This is a social app after all, where&#39;s the fun if you&#39;re the only user 🤷‍</p>
+<p>Now, we better delete the method call that adds the mock data from our <code>RooterActivity</code>&#39;s <code>onCreate</code> method.</p>
+<pre><code>override fun onCreate(savedInstanceState: Bundle?) {
+    ...
+    addMockData()
+}
+</code></pre>
+<p>Speaking of the mock data, go and have a look at your database on Firebase Console at <a href="https://console.firebase.google.com/project/_/database/firestore" target="_blank">https://console.firebase.google.com/project/_/database/firestore</a>. Lot&#39;s of posts 😍</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Displaying the data" duration="5">
+        <p>Now that we have something to display, let&#39;s do it! Open the <code>DataManager</code> class in the project. There are a few methods and lot&#39;s of <code>TODO</code>&#39;s here.</p>
+<p>Before we start modifying let&#39;s go ahead and sign into the app. Open the app and sign in using your Google account if you haven&#39;t already. What happens?</p>
+<aside class="warning"><p>A huge, white, empty screen 😞</p>
+</aside>
+<p>That&#39;s because we implement the method that fetches the list of dragon posts. Before starting to implement the methods, there&#39;s a <code>TODO</code> outside all methods.</p>
+<pre><code>//TODO(&#34;Create the Firestore variable&#34;)
+</code></pre>
+<p>This is where we need to create a variable and assign Firestore instance to it</p>
+<pre><code>private val firestore = FirebaseFirestore.getInstance()
+</code></pre>
+<p>Now, we have a Firestore object that we can use. Next, let&#39;s implement the <code>getDragons</code> method in the <code>DataManager</code> class. Currently, the method should look like this:</p>
+<pre><code>fun getDragons(onComplete: (QuerySnapshot) -&gt; Unit) {
+    //TODO(&#34;Implement the getDragons method&#34;)
+}
+</code></pre>
+<p>We&#39;re going to replace the <code>TODO</code> line so that the method will look like the following:</p>
+<pre><code>fun getDragons(onComplete: (QuerySnapshot) -&gt; Unit) {
+    firestore.collection(&#34;dragons&#34;)
+            .addSnapshotListener { querySnapshot, exception -&gt;
+                if (exception != null) {
+                    logger.e(&#34;Could not get the list of dragons&#34;, exception)
+                } else {
+                    val viewModels = dataMapper.mapData(querySnapshot!!, ::updateLikes, ::deleteDragon)
+                    onComplete(viewModels)
+                }
+            }
+}
+</code></pre>
+<p>Run and see if the awesome list of amazing dragons is displayed properly 🤞</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Writing data" duration="5">
+        <p>Mock data is good and handy but we&#39;d love some real content in our app. Currently, if you try to post something, the app will crash. In order to allow our users to post their lovely dragon photos, we need to replace another <code>TODO</code> with an actual block of code.</p>
+<pre><code>fun postDragon(dataModel: DragonDataModel, onComplete: (success: Boolean) -&gt; Unit) {
+    //TODO(&#34;Implement the postDragon method&#34;)
+}
+</code></pre>
+<p>👇</p>
+<pre><code>fun postDragon(dataModel: DragonDataModel, onComplete: (success: Boolean) -&gt; Unit) {
+    firestore.collection(&#34;dragons&#34;)
+            .add(dataModel)
+            .addOnCompleteListener {
+                if (it.isSuccessful) {
+                    onComplete(true)
+                } else {
+                    logger.e(&#34;Could not post the new dragon&#34;, it.exception)
+                    onComplete(false)
+                }
+            }
+}
+</code></pre>
+<p>Now, we can post our own content to the app! Go ahead and post one.<br><em>If you have no idea what to post, here is a </em><a href="https://firebasestorage.googleapis.com/v0/b/stack-overflow-72ad6.appspot.com/o/MockDragons%2Fsmaug.jpg?alt=media&token=0f470dea-e339-4085-9f8d-54a854a6f5bd" target="_blank"><em>photo of Smaug</em></a></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Deleting data" duration="5">
+        <p>Did you notice a bin icon on the dragon item you&#39;ve posted? We want users to be able to delete their own posts. For that, we have another <code>TODO</code> block of course 🤷 Let&#39;s replace:</p>
+<pre><code>private fun deleteDragon(dragonId: String, onComplete: (success: Boolean) -&gt; Unit) {
+    //TODO(&#34;Implement the deleteDragon method&#34;)
+}
+</code></pre>
+<p>With:</p>
+<pre><code>private fun deleteDragon(dragonId: String, onComplete: (success: Boolean) -&gt; Unit) {
+    firestore.collection(&#34;dragons&#34;)
+            .document(dragonId)
+            .delete()
+            .addOnCompleteListener {
+                if (it.isSuccessful) {
+                    onComplete(true)
+                } else {
+                    logger.e(&#34;Could not delete the dragon&#34;, it.exception)
+                    onComplete(false)
+                }
+            }
+}
+</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Sorting data and other queries" duration="7">
+        <p>Wait! When we post something, it goes to the bottom of the list. That&#39;s not quite right, is it? 🤔 We better sort the data. All we need is to to add a query line to our <code>getDragons</code> method.</p>
+<pre><code>fun getDragons(onComplete: (QuerySnapshot) -&gt; Unit) {
+    firestore.collection(&#34;dragons&#34;)
+            .orderBy(&#34;time&#34;, Query.Direction.DESCENDING)
+            .addSnapshotListener { ... }
+}
+</code></pre>
+<p>We can run and see the result. Much better 👍 We&#39;re now sorting the posts by the time they were posted.</p>
+<p>Let&#39;s now add a new menu item to filter and show only the items with more than 10 likes and liked by us. Replace:</p>
+<pre><code>fun getFilteredDragons(onComplete: (List&lt;DragonViewModel&gt;) -&gt; Unit) {
+    //TODO(&#34;Implement the getFilteredDragons method&#34;)
+}
+</code></pre>
+<p>With:</p>
+<pre><code>fun getFilteredDragons(onComplete: (List&lt;DragonViewModel&gt;) -&gt; Unit) {
+    firestore.collection(&#34;dragons&#34;)
+            .whereGreaterThanOrEqualTo(&#34;likeCount&#34;, 10)
+            .whereArrayContains(&#34;likes&#34;, userManager.getUserId()!!)
+            .orderBy(&#34;time&#34;, Query.Direction.DESCENDING)
+            .addSnapshotListener { querySnapshot, exception -&gt;
+                if (exception != null) {
+                    logger.e(&#34;Could not get the list of dragons&#34;, exception)
+                } else {
+                    val viewModels = dataMapper.mapData(querySnapshot!!, ::updateLikes, ::deleteDragon)
+                    onComplete(viewModels)
+                }
+            }
+}
+</code></pre>
+<p>Now let&#39;s run and click on the filter menu item. What happened? A crash?</p>
+<pre><code>java.lang.IllegalArgumentException: Invalid query. You have an inequality where filter (whereLessThan(), whereGreaterThan(), etc.) on field &#39;likeCount&#39; and so you must also have &#39;likeCount&#39; as your first orderBy() field, but your first orderBy() is currently on field &#39;time&#39; instead.
+</code></pre>
+<p>Yes, this means there are currently limitations on the combinations of the queries you can make using Cloud Firestore. For the sake of this workshop, let&#39;s filter the items that are posted within last 10 minutes and liked by us:</p>
+<pre><code>fun getFilteredDragons(onComplete: (List&lt;DragonViewModel&gt;) -&gt; Unit) {
+    firestore.collection(&#34;dragons&#34;)
+            .whereGreaterThanOrEqualTo(&#34;time&#34;, tenMinAgo())
+            .whereArrayContains(&#34;likes&#34;, userManager.getUserId()!!)
+            .orderBy(&#34;time&#34;, Query.Direction.DESCENDING)
+            .addSnapshotListener { querySnapshot, exception -&gt;
+                if (exception != null) {
+                    logger.e(&#34;Could not get the list of dragons&#34;, exception)
+                } else {
+                    val viewModels = dataMapper.mapData(querySnapshot!!, ::updateLikes, ::deleteDragon)
+                    onComplete(viewModels)
+                }
+            }
+}
+</code></pre>
+<p>Great, let&#39;s try again! What happens when you click on the filter menu item? Nothing really. Let&#39;s check logcat:</p>
+<pre><code>com.google.firebase.firestore.FirebaseFirestoreException: FAILED_PRECONDITION: The query requires an index. You can create it here: https://console.firebase.google.com/project/stack-overflow-72ad6/database/firestore/indexes?create_index=EgdkcmFnb25zGgkKBWxpa2VzEAQaCAoEdGltZRADGgwKCF9fbmFtZV9fEAM
+</code></pre>
+<p>Firebase Cloud Firestore requires you to create indices for every query combination you want to run. This is because Firestore is built to run fast and queries are usually slow. In order to make them fast, the Firebase team came up with such trick. The good news is that it&#39;s super easy to create indices, once you have the log above. All you need to do is to click on the link! 🎉</p>
+<p><img style="max-width: 400.00px" src="img/5cac2613e6fd2d1b.png"></p>
+<p>When the index creation is completed (which always seem to take quite some time), we can try and see filters working.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Updating data using transactions" duration="5">
+        <p>This is all good, but what is a social app without all the likes. We didn&#39;t yet add the like feature to our app, so the filter in previous step returned an empty list. Let&#39;s go ahead and replace the <code>TODO</code> with the actual code.</p>
+<pre><code>private fun updateLikes(dragonId: String, liked: Boolean, onComplete: (success: Boolean) -&gt; Unit) {
+    //TODO(&#34;Implement the updateLikes method&#34;)
+}
+</code></pre>
+<p>👇</p>
+<pre><code>private fun updateLikes(dragonId: String, liked: Boolean, onComplete: (success: Boolean) -&gt; Unit) {
+    firestore.runTransaction { transaction -&gt;
+        val reference = firestore.collection(&#34;dragons&#34;).document(dragonId)
+        val snapshot = transaction.get(reference)
+        val likes = snapshot.get(&#34;likes&#34;) as ArrayList&lt;String&gt;
+        if (liked) {
+            likes.add(userManager.getUserId()!!)
+        } else {
+            likes.remove(userManager.getUserId()!!)
+        }
+        transaction.update(reference, &#34;likes&#34;, likes)
+        transaction.update(reference, &#34;likeCount&#34;, likes.size)
+    }.addOnCompleteListener {
+        if (it.isSuccessful) {
+            onComplete(true)
+        } else {
+            logger.e(&#34;Could not update the likes for the dragon&#34;, it.exception)
+            onComplete(false)
+        }
+    }
+}
+</code></pre>
+<p>We&#39;re using transactions to avoid race conditions. When our app has millions of users, it&#39;s likely that user will like a post at the same (or almost same) time. This might cause some likes to override the others, which is obviously something we don&#39;t want.</p>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    ga('create', 'UA-49880327-14', 'auto');
+
+    (function() {
+      var gaCodelab = '';
+      if (gaCodelab) {
+        ga('create', gaCodelab, 'auto', {name: 'codelab'});
+      }
+
+      var gaView;
+      var parts = location.search.substring(1).split('&');
+      for (var i = 0; i < parts.length; i++) {
+        var param = parts[i].split('=');
+        if (param[0] === 'viewga') {
+          gaView = param[1];
+          break;
+        }
+      }
+      if (gaView && gaView !== gaCodelab) {
+        ga('create', gaView, 'auto', {name: 'view'});
+      }
+    })();
+  </script>
+
+</body>
+</html>
